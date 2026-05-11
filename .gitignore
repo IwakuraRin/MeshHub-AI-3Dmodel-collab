@@ -4,6 +4,7 @@ dist/
 build/
 !backend_go/build/
 *.log
+**/SKILL.md
 
 Frotend_Vue/node_modules/
 backend_go/frontend_dist/
