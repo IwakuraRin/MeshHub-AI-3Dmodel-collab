@@ -1,0 +1,12 @@
+{
+  "name": "meshhub-workspace",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "frontend:dev": "pnpm --dir Frotend_Vue dev",
+    "frontend:build": "pnpm --dir Frotend_Vue build",
+    "server:dev": "cd server && go run .",
+    "wails:dev": "cd backend_go && wails dev",
+    "wails:build": "pnpm frontend:build && cd backend_go && wails build && ../scripts/export-wails-build.sh"
+  }
+}
