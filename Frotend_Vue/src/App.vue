@@ -96,6 +96,9 @@ const activeMenu      = ref("");
 const importedFiles   = ref([]);
 const selectedFileId  = ref("");
 const communityView   = ref("activity");
+const repositoryQuery = ref("");
+const globalSearch    = ref("");
+const homePrompt      = ref("");
 const previewStatus   = ref("请通过左上角“文件 > 导入文件”添加三维模型。");
 const previewError    = ref("");
 const isViewerReady   = ref(false);
@@ -206,6 +209,27 @@ const communityComments = [
   }
 ];
 
+const dashboardTimelineEntries = [
+  {
+    id: "timeline-launch",
+    title: "MeshHub 社区首页改版",
+    time: "今天",
+    summary: "正在把桌面客户端调整为更接近 GitHub Dashboard 的仓库和动态流结构。"
+  },
+  {
+    id: "timeline-convert",
+    title: "云端模型格式转化",
+    time: "昨天",
+    summary: "支持把云端模型提交到服务端转换任务队列，并把结果写回模型库。"
+  },
+  {
+    id: "timeline-preview",
+    title: "本地模型实时预览",
+    time: "5 月 10 日",
+    summary: "桌面端已支持 STL、OBJ、FBX 直接预览，并保留 STEP 转换流程。"
+  }
+];
+
 const personalProjects = computed(() => {
   return importedFiles.value.map((file) => {
     return {
@@ -215,6 +239,41 @@ const personalProjects = computed(() => {
       visibility: file.source === "cloud" ? "云端项目" : "本地草稿",
       updatedAt: file.details?.find((detail) => detail.label === "创建时间")?.value || "刚刚更新"
     };
+  });
+});
+
+const dashboardRepositories = computed(() => {
+  if (personalProjects.value.length > 0) {
+    return personalProjects.value.map((project) => {
+      return {
+        id: project.id,
+        title: `${authUser.value || "MeshHub"}/${project.name}`,
+        meta: `${project.format} · ${project.visibility}`,
+        selectable: true
+      };
+    });
+  }
+
+  return publicModelLibrary.map((model) => {
+    return {
+      id: model.id,
+      title: `${model.owner}/${model.name}`,
+      meta: `${model.format} · ${model.stars} stars`,
+      selectable: false
+    };
+  });
+});
+
+const filteredRepositories = computed(() => {
+  const keyword = repositoryQuery.value.trim().toLowerCase();
+
+  if (!keyword) {
+    return dashboardRepositories.value;
+  }
+
+  return dashboardRepositories.value.filter((repository) => {
+    return repository.title.toLowerCase().includes(keyword)
+      || repository.meta.toLowerCase().includes(keyword);
   });
 });
 
@@ -242,6 +301,32 @@ const recentUploads = computed(() => {
       time: file.details?.find((detail) => detail.label === "创建时间")?.value || "刚刚上传",
       summary: file.summary,
       source: file.source || "local"
+    };
+  });
+});
+
+const dashboardFeedEntries = computed(() => {
+  if (communityView.value === "library") {
+    return publicModelLibrary.map((model) => {
+      return {
+        id: model.id,
+        title: `${model.owner}/${model.name}`,
+        meta: `${model.format} · ${model.updatedAt}`,
+        summary: model.summary,
+        stats: `${model.stars} stars · ${model.comments} 评论`,
+        action: "Star"
+      };
+    });
+  }
+
+  return recentUploads.value.map((upload) => {
+    return {
+      id: upload.id,
+      title: `${upload.owner}/${upload.name}`,
+      meta: `${upload.format} · ${upload.time}`,
+      summary: upload.summary,
+      stats: upload.source === "public" ? "公开模型" : "我的项目",
+      action: upload.source === "public" ? "Explore" : "Open"
     };
   });
 });
@@ -281,8 +366,6 @@ const menuButtonClass = [
 
 const menuPanelClass = [
   "absolute",
-  "left-0",
-  "top-9",
   "z-30",
   "min-w-48",
   "rounded-xl",
@@ -309,16 +392,64 @@ const menuItemClass = [
 
 /*
 |--------------------------------------------------------------------------
-| 左侧文件列表面板样式
+| GitHub 风格仪表盘样式
 |--------------------------------------------------------------------------
-| 控制文件列表、文件卡片、选中状态和空状态的视觉结构。
+| 控制顶部导航、仓库侧栏、主页卡片、feed 和右侧状态栏。
 |--------------------------------------------------------------------------
 */
-const filePanelClass = [
+const dashboardHeaderIconButtonClass = [
+  "flex",
+  "h-9",
+  "w-9",
+  "items-center",
+  "justify-center",
+  "rounded-md",
+  "border",
+  "border-app-border-soft",
+  "bg-app-sidebar",
+  "text-sm",
+  "font-medium",
+  "text-app-text-muted",
+  "transition",
+  "hover:border-app-border",
+  "hover:text-app-text"
+];
+
+const dashboardHeaderSearchClass = [
+  "h-9",
+  "w-full",
+  "rounded-md",
+  "border",
+  "border-app-border-soft",
+  "bg-app-bg",
+  "px-3",
+  "text-sm",
+  "text-app-text",
+  "outline-none",
+  "placeholder:text-app-text-subtle",
+  "focus:border-app-border"
+];
+
+const dashboardHeaderActionClass = [
+  "rounded-md",
+  "border",
+  "border-app-border-soft",
+  "bg-app-sidebar",
+  "px-3",
+  "py-2",
+  "text-sm",
+  "font-medium",
+  "text-app-text-muted",
+  "transition",
+  "hover:border-app-border",
+  "hover:text-app-text"
+];
+
+const dashboardSidebarClass = [
   "flex",
   "h-full",
   "min-h-0",
-  "w-72",
+  "w-[320px]",
   "shrink-0",
   "flex-col",
   "border-r",
@@ -326,9 +457,24 @@ const filePanelClass = [
   "bg-app-sidebar"
 ];
 
+const dashboardSidebarSearchClass = [
+  "h-9",
+  "w-full",
+  "rounded-md",
+  "border",
+  "border-app-border-soft",
+  "bg-app-bg",
+  "px-3",
+  "text-sm",
+  "text-app-text",
+  "outline-none",
+  "placeholder:text-app-text-subtle",
+  "focus:border-app-border"
+];
+
 const fileItemBaseClass = [
   "w-full",
-  "rounded-xl",
+  "rounded-md",
   "border",
   "p-3",
   "text-left",
@@ -342,98 +488,70 @@ const fileItemActiveClass = [
 
 const fileItemIdleClass = [
   "border-app-border-soft",
-  "bg-app-surface",
+  "bg-transparent",
   "hover:border-app-border",
-  "hover:bg-app-surface-hover"
+  "hover:bg-app-surface-hover/60"
 ];
 
 /*
 |--------------------------------------------------------------------------
-| 社区主页三栏样式
+| GitHub 风格主页卡片样式
 |--------------------------------------------------------------------------
-| 控制个人项目栏、动态内容流、公开模型库和右侧竖向小菜单。
+| 用于 Home 标题区、提问输入区、Feed 卡片和右侧面板。
 |--------------------------------------------------------------------------
 */
-const projectSidebarClass = [
-  "flex",
-  "h-full",
-  "min-h-0",
-  "w-72",
-  "shrink-0",
-  "flex-col",
-  "border-r",
-  "border-app-border",
-  "bg-app-sidebar"
-];
-
 const communityMainClass = [
   "min-w-0",
   "flex-1",
   "overflow-y-auto",
   "bg-app-bg",
-  "px-5",
-  "py-4"
+  "px-8",
+  "py-8"
 ];
 
 const communityPanelClass = [
-  "rounded-2xl",
-  "border",
-  "border-app-border",
-  "bg-app-surface",
-  "p-4",
-  "shadow-xl",
-  "shadow-black/20"
-];
-
-const communityCardClass = [
   "rounded-xl",
   "border",
   "border-app-border-soft",
-  "bg-app-bg",
+  "bg-app-surface",
+  "p-4",
+  "shadow-sm",
+  "shadow-black/10"
+];
+
+const communityCardClass = [
+  "rounded-md",
+  "border",
+  "border-app-border-soft",
+  "bg-app-surface",
   "p-4",
   "transition",
   "hover:border-app-border",
   "hover:bg-app-surface-hover"
 ];
 
-const rightRailClass = [
+const communityTabButtonBaseClass = [
   "flex",
-  "h-full",
-  "w-16",
-  "shrink-0",
-  "flex-col",
-  "items-center",
-  "gap-2",
-  "border-l",
-  "border-app-border",
-  "bg-app-bg",
-  "py-4"
-];
-
-const rightRailButtonBaseClass = [
-  "flex",
-  "h-24",
-  "w-10",
   "items-center",
   "justify-center",
-  "rounded-xl",
+  "rounded-full",
   "border",
-  "text-[11px]",
+  "px-3",
+  "py-1.5",
+  "text-sm",
   "font-medium",
-  "leading-4",
   "transition",
-  "[writing-mode:vertical-rl]"
 ];
 
-const rightRailActiveClass = [
-  "border-app-accent",
-  "bg-app-surface-hover",
+const communityTabActiveClass = [
+  "border-app-border",
+  "bg-app-surface-raised",
   "text-app-text"
 ];
 
-const rightRailIdleClass = [
+const communityTabIdleClass = [
   "border-app-border-soft",
-  "bg-app-surface",
+  "bg-app-bg",
   "text-app-text-muted",
   "hover:border-app-border",
   "hover:text-app-text"
@@ -752,6 +870,16 @@ async function openCloudUploadDialog() {
   fileInputRef.value?.click();
 }
 
+async function syncCloudModelsOnDemand() {
+  if (!authToken.value) {
+    await checkCloudServer();
+    previewError.value = "当前未登录云端账户，暂时只能浏览本地和公开模型。";
+    return;
+  }
+
+  await syncCloudModelsAfterLogin();
+}
+
 /*
 |--------------------------------------------------------------------------
 | 设置菜单按钮
@@ -918,20 +1046,29 @@ function getFileItemClass(fileId) {
 
 /*
 |--------------------------------------------------------------------------
-| 右侧竖向小菜单
+| 顶部视图切换标签
 |--------------------------------------------------------------------------
-| 控制中间主页内容在“动态”和“开源模型库”之间切换。
+| 控制 Home 页面在“动态”和“开源模型库”之间切换。
 |--------------------------------------------------------------------------
 */
 function switchCommunityView(nextView) {
   communityView.value = nextView;
 }
 
-function getRightRailButtonClass(viewName) {
+function getCommunityTabClass(viewName) {
   return [
-    ...rightRailButtonBaseClass,
-    ...(communityView.value === viewName ? rightRailActiveClass : rightRailIdleClass)
+    ...communityTabButtonBaseClass,
+    ...(communityView.value === viewName ? communityTabActiveClass : communityTabIdleClass)
   ];
+}
+
+async function handleRepositorySelect(repository) {
+  if (repository.selectable) {
+    await selectModelFile(repository.id);
+    return;
+  }
+
+  switchCommunityView("library");
 }
 
 /*
@@ -1866,44 +2003,55 @@ onBeforeUnmount(() => {
 
     <!--
     |--------------------------------------------------------------------------
-    | 顶部菜单栏
+    | GitHub 风格顶部导航
     |--------------------------------------------------------------------------
-    | 放置“文件”和“设置”两个入口，承载导入、格式转化和版本信息。
+    | 提供全局搜索、品牌入口、文件操作菜单和设置入口。
     |--------------------------------------------------------------------------
     -->
-    <header class="flex h-12 shrink-0 items-center border-b border-app-border bg-app-bg px-4">
-      <!--
-      |--------------------------------------------------------------------------
-      | 品牌标识区域
-      |--------------------------------------------------------------------------
-      | 展示 MeshHub 的小鸡线稿 logo 和软件名称，作为客户端主界面的品牌入口。
-      |--------------------------------------------------------------------------
-      -->
-      <div class="mr-4 flex items-center gap-2">
+    <header class="flex h-14 shrink-0 items-center border-b border-app-border bg-app-sidebar px-4">
+      <div class="flex items-center gap-3">
+        <button
+          :class = "dashboardHeaderIconButtonClass"
+          type   = "button"
+        >
+          =
+        </button>
+
         <img
           alt   = "MeshHub logo"
-          class = "h-7 w-7 rounded-lg border border-app-border bg-white object-contain"
+          class = "h-8 w-8 rounded-full border border-app-border bg-white object-contain p-1"
           src   = "/meshhub-logo.png"
         />
 
-        <span class="text-sm font-semibold text-app-text">
-          MeshHub
-        </span>
+        <div>
+          <p class="text-sm font-semibold text-app-text">Dashboard</p>
+        </div>
       </div>
 
-      <nav class="flex items-center gap-1">
+      <div class="mx-6 min-w-0 flex-1">
+        <input
+          v-model      = "globalSearch"
+          :class       = "dashboardHeaderSearchClass"
+          autocomplete = "off"
+          placeholder  = "Type / to search repositories, models and comments"
+          type         = "text"
+        />
+      </div>
+
+      <nav class="flex items-center gap-2">
         <div class="relative">
           <button
-            :class = "menuButtonClass"
+            :class = "dashboardHeaderActionClass"
             type   = "button"
             @click = "toggleFileMenu"
           >
-            文件
+            + New
           </button>
 
           <div
             v-if  = "activeMenu === 'file'"
             :class = "menuPanelClass"
+            class  = "right-0 top-11"
           >
             <button
               :class = "menuItemClass"
@@ -1933,22 +2081,34 @@ onBeforeUnmount(() => {
 
         <div class="relative">
           <button
-            :class = "menuButtonClass"
+            :class = "dashboardHeaderActionClass"
             type   = "button"
             @click = "toggleSettingsMenu"
           >
-            设置
+            Settings
           </button>
 
           <div
             v-if  = "activeMenu === 'settings'"
             :class = "menuPanelClass"
+            class  = "right-0 top-11"
           >
             <div class="rounded-lg px-3 py-2 text-sm text-app-text-muted">
               版本号：{{ clientVersion }}
             </div>
+
+            <div class="rounded-lg px-3 py-2 text-xs text-app-text-subtle">
+              {{ accessStatus }}
+            </div>
           </div>
         </div>
+
+        <button
+          :class = "dashboardHeaderActionClass"
+          type   = "button"
+        >
+          {{ authUser || "Guest" }}
+        </button>
       </nav>
 
       <input
@@ -1964,25 +2124,41 @@ onBeforeUnmount(() => {
     <section class="flex min-h-0 flex-1">
       <!--
       |--------------------------------------------------------------------------
-      | 左侧个人开源项目面板
+      | 左侧仓库侧栏
       |--------------------------------------------------------------------------
-      | 展示当前账户自己的模型项目，点击项目后在中间区域切换当前预览对象。
+      | 参考 GitHub Dashboard 的 Top repositories 结构，展示个人模型仓库和快速筛选。
       |--------------------------------------------------------------------------
       -->
-      <aside :class="projectSidebarClass">
-        <div class="border-b border-app-border px-4 py-3">
-          <p class="text-sm font-semibold text-app-text">我的开源项目</p>
-          <p class="mt-1 text-xs text-app-text-subtle">
-            {{ authUser || "当前账户" }} 的模型仓库
-          </p>
+      <aside :class="dashboardSidebarClass">
+        <div class="border-b border-app-border px-4 py-6">
+          <div class="flex items-center justify-between gap-3">
+            <p class="text-base font-semibold text-app-text">Top repositories</p>
+
+            <button
+              :class = "dashboardHeaderActionClass"
+              type   = "button"
+              @click = "openImportDialog"
+            >
+              New
+            </button>
+          </div>
+
+          <input
+            v-model      = "repositoryQuery"
+            :class       = "dashboardSidebarSearchClass"
+            autocomplete = "off"
+            class        = "mt-4"
+            placeholder  = "Find a repository..."
+            type         = "text"
+          />
         </div>
 
-        <div class="min-h-0 flex-1 overflow-y-auto p-3">
+        <div class="min-h-0 flex-1 overflow-y-auto px-3 py-3">
           <div
-            v-if  = "personalProjects.length === 0"
-            class = "rounded-xl border border-dashed border-app-border p-4 text-sm leading-6 text-app-text-subtle"
+            v-if  = "filteredRepositories.length === 0"
+            class = "rounded-md border border-dashed border-app-border px-3 py-4 text-sm leading-6 text-app-text-subtle"
           >
-            还没有自己的模型项目。可以从顶部“文件”菜单导入或上传模型。
+            没有匹配的模型仓库。
           </div>
 
           <div
@@ -1990,23 +2166,19 @@ onBeforeUnmount(() => {
             class = "space-y-2"
           >
             <button
-              v-for = "project in personalProjects"
-              :key  = "project.id"
-              :class = "getFileItemClass(project.id)"
+              v-for = "repository in filteredRepositories"
+              :key  = "repository.id"
+              :class = "getFileItemClass(repository.id)"
               type   = "button"
-              @click = "selectModelFile(project.id)"
+              @click = "handleRepositorySelect(repository)"
             >
-              <span class="block truncate text-sm font-medium text-app-text">
-                {{ project.name }}
-              </span>
+              <p class="break-words text-left text-sm font-medium leading-6 text-app-text">
+                {{ repository.title }}
+              </p>
 
-              <span class="mt-1 block text-xs uppercase text-app-link">
-                {{ project.format }} · {{ project.visibility }}
-              </span>
-
-              <span class="mt-1 block text-xs text-app-text-subtle">
-                {{ project.updatedAt }}
-              </span>
+              <p class="mt-1 text-left text-xs text-app-text-subtle">
+                {{ repository.meta }}
+              </p>
             </button>
           </div>
         </div>
@@ -2014,134 +2186,154 @@ onBeforeUnmount(() => {
 
       <!--
       |--------------------------------------------------------------------------
-      | 中间社区内容面板
+      | 中间 Home 内容区
       |--------------------------------------------------------------------------
-      | 默认展示动态流，点击右侧小菜单后切换为公开模型库。
+      | 参考 GitHub Home 的提问输入区、动作栏和 Feed，同时接入 MeshHub 预览能力。
       |--------------------------------------------------------------------------
       -->
       <section :class="communityMainClass">
-        <div class="mx-auto flex max-w-5xl flex-col gap-4">
-          <div :class="communityPanelClass">
-            <p class="text-xs font-medium uppercase text-app-link">
-              MeshHub
-            </p>
+        <div class="mx-auto flex max-w-4xl flex-col gap-6">
+          <div class="flex items-end justify-between gap-4">
+            <div>
+              <h1 class="text-4xl font-semibold tracking-tight text-app-text">Home</h1>
+              <p class="mt-2 text-sm text-app-text-muted">
+                用 GitHub Dashboard 的形式管理你的开源模型仓库、动态和预览。
+              </p>
+            </div>
 
-            <h1 class="mt-2 text-2xl font-semibold text-app-text">
-              {{ communityView === "activity" ? "动态" : "开源模型库" }}
-            </h1>
+            <div class="flex items-center gap-2">
+              <button
+                :class = "getCommunityTabClass('activity')"
+                type   = "button"
+                @click = "switchCommunityView('activity')"
+              >
+                动态
+              </button>
 
-            <p class="mt-2 max-w-2xl text-sm leading-6 text-app-text-muted">
-              {{
-                communityView === "activity"
-                  ? "查看最近上传的模型作品、项目评论和你自己的模型仓库更新。"
-                  : "浏览其他人公开分享的三维模型项目，后续可以接入 star、fork 和模型仓库。"
-              }}
-            </p>
+              <button
+                :class = "getCommunityTabClass('library')"
+                type   = "button"
+                @click = "switchCommunityView('library')"
+              >
+                开源模型库
+              </button>
+            </div>
           </div>
 
-          <!--
-          |--------------------------------------------------------------------------
-          | 动态内容流
-          |--------------------------------------------------------------------------
-          | 展示最近上传的作品、评论，以及当前选中模型的预览入口。
-          |--------------------------------------------------------------------------
-          -->
+          <section :class="communityPanelClass">
+            <textarea
+              v-model      = "homePrompt"
+              class        = "min-h-28 w-full resize-none bg-transparent text-lg text-app-text outline-none placeholder:text-app-text-subtle"
+              placeholder  = "Ask anything about your models, repositories, preview tasks or format conversion"
+            ></textarea>
+
+            <div class="mt-4 flex items-center justify-between gap-3 border-t border-app-border-soft pt-4">
+              <div class="flex flex-wrap items-center gap-2">
+                <button
+                  :class = "dashboardHeaderActionClass"
+                  type   = "button"
+                >
+                  Ask
+                </button>
+
+                <button
+                  :class = "dashboardHeaderActionClass"
+                  type   = "button"
+                >
+                  All repositories
+                </button>
+
+                <button
+                  :class = "dashboardHeaderActionClass"
+                  type   = "button"
+                >
+                  +
+                </button>
+              </div>
+
+              <p class="text-sm text-app-text-subtle">
+                {{ authUser || "Guest" }} · {{ isServerReachable ? "Cloud online" : "Cloud offline" }}
+              </p>
+            </div>
+          </section>
+
+          <div class="flex flex-wrap gap-3">
+            <button
+              :class = "dashboardHeaderActionClass"
+              type   = "button"
+              @click = "openImportDialog"
+            >
+              Import model
+            </button>
+
+            <button
+              :class = "dashboardHeaderActionClass"
+              type   = "button"
+              @click = "openCloudUploadDialog"
+            >
+              Upload cloud
+            </button>
+
+            <button
+              :class = "dashboardHeaderActionClass"
+              type   = "button"
+              @click = "openFormatConversion"
+            >
+              Convert
+            </button>
+
+            <button
+              :class = "dashboardHeaderActionClass"
+              type   = "button"
+              @click = "syncCloudModelsOnDemand"
+            >
+              Sync cloud
+            </button>
+          </div>
+
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <p class="text-xl font-semibold text-app-text">Feed</p>
+              <p class="mt-1 text-sm text-app-text-muted">
+                {{
+                  communityView === "activity"
+                    ? "最近上传的模型、评论和当前仓库预览。"
+                    : "公开模型库中的热门项目和最新更新。"
+                }}
+              </p>
+            </div>
+
+            <button
+              :class = "dashboardHeaderActionClass"
+              type   = "button"
+            >
+              Filter
+            </button>
+          </div>
+
           <div
             v-show = "communityView === 'activity'"
             class  = "grid gap-4"
           >
             <section :class="communityPanelClass">
-              <div class="flex items-center justify-between gap-3">
-                <div>
-                  <p class="text-sm font-semibold text-app-text">最近上传</p>
-                  <p class="mt-1 text-xs text-app-text-subtle">
-                    你的上传会优先出现在这里。
-                  </p>
-                </div>
-
-                <button
-                  :class = "secondaryButtonClass"
-                  type   = "button"
-                  @click = "openCloudUploadDialog"
-                >
-                  上传模型
-                </button>
-              </div>
-
-              <div class="mt-4 grid gap-3">
-                <article
-                  v-for = "upload in recentUploads"
-                  :key  = "upload.id"
-                  :class = "communityCardClass"
-                >
-                  <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0">
-                      <p class="truncate text-sm font-semibold text-app-text">
-                        {{ upload.name }}
-                      </p>
-
-                      <p class="mt-1 text-xs text-app-text-subtle">
-                        {{ upload.owner }} · {{ upload.format }} · {{ upload.time }}
-                      </p>
-                    </div>
-
-                    <span class="rounded-lg border border-app-border px-2 py-1 text-xs text-app-link">
-                      {{ upload.source === "public" ? "公开" : "我的" }}
-                    </span>
-                  </div>
-
-                  <p class="mt-3 text-sm leading-6 text-app-text-muted">
-                    {{ upload.summary }}
-                  </p>
-                </article>
-              </div>
-            </section>
-
-            <section :class="communityPanelClass">
-              <p class="text-sm font-semibold text-app-text">最新评论</p>
-
-              <div class="mt-4 grid gap-3">
-                <article
-                  v-for = "comment in communityComments"
-                  :key  = "comment.id"
-                  :class = "communityCardClass"
-                >
-                  <p class="text-sm text-app-text">
-                    {{ comment.author }}
-                    <span class="text-app-text-subtle">评论了</span>
-                    {{ comment.target }}
-                  </p>
-
-                  <p class="mt-2 text-sm leading-6 text-app-text-muted">
-                    {{ comment.content }}
-                  </p>
-
-                  <p class="mt-2 text-xs text-app-text-subtle">
-                    {{ comment.time }}
-                  </p>
-                </article>
-              </div>
-            </section>
-
-            <section :class="communityPanelClass">
-              <div class="flex items-center justify-between gap-3">
+              <div class="flex items-center justify-between gap-4">
                 <div class="min-w-0">
-                  <p class="truncate text-sm font-semibold text-app-text">
-                    {{ selectedFile?.name || "当前模型预览" }}
+                  <p class="truncate text-lg font-semibold text-app-text">
+                    {{ selectedFile?.name || "Current preview" }}
                   </p>
 
-                  <p class="mt-1 text-xs leading-5 text-app-text-muted">
+                  <p class="mt-2 text-sm text-app-text-muted">
                     {{ previewStatus }}
                   </p>
                 </div>
 
-                <div class="flex shrink-0 gap-2">
+                <div class="flex shrink-0 items-center gap-2">
                   <button
                     :class = "viewerButtonClass"
                     type   = "button"
                     @click = "zoomInPreview"
                   >
-                    放大
+                    Zoom in
                   </button>
 
                   <button
@@ -2149,7 +2341,7 @@ onBeforeUnmount(() => {
                     type   = "button"
                     @click = "zoomOutPreview"
                   >
-                    缩小
+                    Zoom out
                   </button>
 
                   <button
@@ -2157,12 +2349,12 @@ onBeforeUnmount(() => {
                     type   = "button"
                     @click = "resetPreviewView"
                   >
-                    重置
+                    Reset
                   </button>
                 </div>
               </div>
 
-              <div class="relative mt-4 h-[360px] overflow-hidden rounded-xl border border-app-border bg-app-bg">
+              <div class="relative mt-4 h-[320px] overflow-hidden rounded-md border border-app-border-soft bg-app-bg">
                 <canvas
                   ref   = "viewerCanvasRef"
                   class = "h-full w-full"
@@ -2176,80 +2368,193 @@ onBeforeUnmount(() => {
                 </div>
               </div>
 
+              <div
+                v-if  = "selectedFile?.details?.length"
+                class = "mt-4 grid gap-3 sm:grid-cols-2"
+              >
+                <div
+                  v-for = "detail in selectedFile.details.slice(0, 4)"
+                  :key  = "`${detail.label}-${detail.value}`"
+                  class = "rounded-md border border-app-border-soft bg-app-bg px-3 py-2"
+                >
+                  <p class="text-xs text-app-text-subtle">{{ detail.label }}</p>
+                  <p class="mt-1 break-all text-sm text-app-text-muted">{{ detail.value }}</p>
+                </div>
+              </div>
+
               <p
                 v-if  = "previewError"
-                class = "mt-3 text-xs text-app-accent"
+                class = "mt-3 text-xs text-red-400"
               >
                 {{ previewError }}
               </p>
             </section>
-          </div>
 
-          <!--
-          |--------------------------------------------------------------------------
-          | 公开模型库内容流
-          |--------------------------------------------------------------------------
-          | 展示其他用户公开分享的模型作品，作为后续社区仓库入口。
-          |--------------------------------------------------------------------------
-          -->
-          <div
-            v-show = "communityView === 'library'"
-            class  = "grid gap-3"
-          >
-            <article
-              v-for = "model in publicModelLibrary"
-              :key  = "model.id"
-              :class = "communityCardClass"
-            >
-              <div class="flex items-start justify-between gap-4">
-                <div class="min-w-0">
-                  <p class="truncate text-base font-semibold text-app-text">
-                    {{ model.owner }}/{{ model.name }}
+            <section :class="communityPanelClass">
+              <div class="space-y-0 overflow-hidden rounded-md border border-app-border-soft">
+                <article
+                  v-for = "entry in dashboardFeedEntries"
+                  :key  = "entry.id"
+                  class = "border-b border-app-border-soft bg-app-surface px-4 py-4 last:border-b-0"
+                >
+                  <div class="flex items-start justify-between gap-4">
+                    <div class="min-w-0">
+                      <p class="break-words text-base font-semibold text-app-text">
+                        {{ entry.title }}
+                      </p>
+
+                      <p class="mt-2 text-sm text-app-text-muted">
+                        {{ entry.summary }}
+                      </p>
+
+                      <div class="mt-3 flex flex-wrap gap-3 text-xs text-app-text-subtle">
+                        <span>{{ entry.meta }}</span>
+                        <span>{{ entry.stats }}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      :class = "dashboardHeaderActionClass"
+                      type   = "button"
+                    >
+                      {{ entry.action }}
+                    </button>
+                  </div>
+                </article>
+              </div>
+            </section>
+
+            <section :class="communityPanelClass">
+              <p class="text-base font-semibold text-app-text">Recent comments</p>
+
+              <div class="mt-4 space-y-3">
+                <article
+                  v-for = "comment in communityComments"
+                  :key  = "comment.id"
+                  :class = "communityCardClass"
+                >
+                  <p class="text-sm font-medium text-app-text">
+                    {{ comment.author }}
+                    <span class="font-normal text-app-text-subtle">commented on</span>
+                    {{ comment.target }}
                   </p>
 
                   <p class="mt-2 text-sm leading-6 text-app-text-muted">
-                    {{ model.summary }}
+                    {{ comment.content }}
                   </p>
-                </div>
 
-                <span class="shrink-0 rounded-lg border border-app-border px-2 py-1 text-xs text-app-link">
-                  {{ model.format }}
-                </span>
+                  <p class="mt-2 text-xs text-app-text-subtle">
+                    {{ comment.time }}
+                  </p>
+                </article>
               </div>
-
-              <div class="mt-4 flex flex-wrap gap-3 text-xs text-app-text-subtle">
-                <span>{{ model.stars }} stars</span>
-                <span>{{ model.comments }} 评论</span>
-                <span>{{ model.updatedAt }}</span>
-              </div>
-            </article>
+            </section>
           </div>
+
+          <section
+            v-show  = "communityView === 'library'"
+            :class  = "communityPanelClass"
+          >
+            <div class="space-y-0 overflow-hidden rounded-md border border-app-border-soft">
+              <article
+                v-for = "entry in dashboardFeedEntries"
+                :key  = "entry.id"
+                class = "border-b border-app-border-soft bg-app-surface px-4 py-5 last:border-b-0"
+              >
+                <div class="flex items-start justify-between gap-4">
+                  <div class="min-w-0">
+                    <p class="break-words text-base font-semibold text-app-text">
+                      {{ entry.title }}
+                    </p>
+
+                    <p class="mt-2 text-sm leading-6 text-app-text-muted">
+                      {{ entry.summary }}
+                    </p>
+
+                    <div class="mt-3 flex flex-wrap gap-3 text-xs text-app-text-subtle">
+                      <span>{{ entry.meta }}</span>
+                      <span>{{ entry.stats }}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    :class = "dashboardHeaderActionClass"
+                    type   = "button"
+                  >
+                    {{ entry.action }}
+                  </button>
+                </div>
+              </article>
+            </div>
+          </section>
         </div>
       </section>
 
       <!--
       |--------------------------------------------------------------------------
-      | 右侧竖向小菜单
+      | 右侧状态栏
       |--------------------------------------------------------------------------
-      | 很小的竖排菜单，负责切换中间内容为动态或公开模型库。
+      | 参考 GitHub Dashboard 的 changelog 侧栏，展示最近更新和当前工作区状态。
       |--------------------------------------------------------------------------
       -->
-      <aside :class="rightRailClass">
-        <button
-          :class = "getRightRailButtonClass('activity')"
-          type   = "button"
-          @click = "switchCommunityView('activity')"
-        >
-          动态
-        </button>
+      <aside class="hidden h-full w-[320px] shrink-0 overflow-y-auto border-l border-app-border px-6 py-8 xl:block">
+        <div class="space-y-4">
+          <section :class="communityPanelClass">
+            <p class="text-base font-semibold text-app-text">Latest from MeshHub</p>
 
-        <button
-          :class = "getRightRailButtonClass('library')"
-          type   = "button"
-          @click = "switchCommunityView('library')"
-        >
-          开源模型库
-        </button>
+            <div class="mt-5 space-y-5">
+              <article
+                v-for = "(entry, index) in dashboardTimelineEntries"
+                :key  = "entry.id"
+                class = "relative pl-6"
+              >
+                <span class="absolute left-0 top-1 h-2 w-2 rounded-full bg-app-border"></span>
+                <span
+                  v-if  = "index < dashboardTimelineEntries.length - 1"
+                  class = "absolute left-[3px] top-3 h-[calc(100%+8px)] w-px bg-app-border-soft"
+                ></span>
+
+                <p class="text-xs text-app-text-subtle">{{ entry.time }}</p>
+                <p class="mt-2 text-sm font-medium text-app-text">{{ entry.title }}</p>
+                <p class="mt-2 text-sm leading-6 text-app-text-muted">{{ entry.summary }}</p>
+              </article>
+            </div>
+          </section>
+
+          <section :class="communityPanelClass">
+            <p class="text-base font-semibold text-app-text">Workspace</p>
+
+            <div class="mt-4 space-y-3 text-sm">
+              <div class="rounded-md border border-app-border-soft bg-app-bg px-3 py-3">
+                <p class="text-xs text-app-text-subtle">当前视图</p>
+                <p class="mt-1 text-app-text">
+                  {{ communityView === "activity" ? "动态" : "开源模型库" }}
+                </p>
+              </div>
+
+              <div class="rounded-md border border-app-border-soft bg-app-bg px-3 py-3">
+                <p class="text-xs text-app-text-subtle">云端状态</p>
+                <p class="mt-1 text-app-text">
+                  {{ isServerReachable ? "Cloud online" : "Cloud offline" }}
+                </p>
+              </div>
+
+              <div class="rounded-md border border-app-border-soft bg-app-bg px-3 py-3">
+                <p class="text-xs text-app-text-subtle">当前账户</p>
+                <p class="mt-1 text-app-text">
+                  {{ authUser || "Guest" }}
+                </p>
+              </div>
+
+              <div class="rounded-md border border-app-border-soft bg-app-bg px-3 py-3">
+                <p class="text-xs text-app-text-subtle">已载入模型</p>
+                <p class="mt-1 text-app-text">
+                  {{ importedFiles.length }} 个
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
       </aside>
     </section>
   </main>
