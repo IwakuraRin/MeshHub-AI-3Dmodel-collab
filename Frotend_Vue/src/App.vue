@@ -168,7 +168,7 @@ const dashboardTimelineEntries = [
     id: "timeline-launch",
     title: "MeshHub 社区首页改版",
     time: "今天",
-    summary: "正在把桌面客户端调整为更接近 GitHub Dashboard 的仓库和动态流结构。"
+    summary: "正在把桌面客户端调整为更接近代码托管仪表盘的仓库和动态流结构。"
   },
   {
     id: "timeline-convert",
@@ -233,7 +233,7 @@ const recentUploads = computed(() => {
     return {
       id: file.id,
       name: file.name,
-      owner: authUser.value || "me",
+      owner: authUser.value || "我",
       format: file.formatName || file.extension.toUpperCase(),
       time: file.details?.find((detail) => detail.label === "创建时间")?.value || "刚刚上传",
       summary: file.summary,
@@ -250,8 +250,8 @@ const dashboardFeedEntries = computed(() => {
         title: `${model.owner}/${model.name}`,
         meta: `${model.format} · ${model.updatedAt}`,
         summary: model.summary,
-        stats: `${model.stars} stars · ${model.comments} 评论`,
-        action: "Star"
+        stats: `${model.stars} 收藏 · ${model.comments} 评论`,
+        action: "收藏"
       };
     });
   }
@@ -263,7 +263,7 @@ const dashboardFeedEntries = computed(() => {
       meta: `${upload.format} · ${upload.time}`,
       summary: upload.summary,
       stats: upload.source === "public" ? "公开模型" : "我的项目",
-      action: upload.source === "public" ? "Explore" : "Open"
+      action: upload.source === "public" ? "浏览" : "打开"
     };
   });
 });
@@ -277,7 +277,7 @@ const repositoryEmptyMessage = computed(() => {
 const feedEmptyMessage = computed(() => {
   return communityView.value === "library"
     ? "公开模型库还没有真实数据。后续接入社区接口后会显示公开模型。"
-    : "Feed 里还没有真实模型动态。导入或同步模型后会显示更新。";
+    : "动态里还没有真实模型更新。导入或同步模型后会显示更新。";
 });
 
 /*
@@ -446,7 +446,7 @@ const fileItemIdleClass = [
 |--------------------------------------------------------------------------
 | GitHub 风格主页卡片样式
 |--------------------------------------------------------------------------
-| 用于 Home 标题区、提问输入区、Feed 卡片和右侧面板。
+| 用于首页标题区、提问输入区、动态卡片和右侧面板。
 |--------------------------------------------------------------------------
 */
 const communityMainClass = [
@@ -997,7 +997,7 @@ function getFileItemClass(fileId) {
 |--------------------------------------------------------------------------
 | 顶部视图切换标签
 |--------------------------------------------------------------------------
-| 控制 Home 页面在“动态”和“开源模型库”之间切换。
+| 控制首页在“动态”和“开源模型库”之间切换。
 |--------------------------------------------------------------------------
 */
 function switchCommunityView(nextView) {
@@ -1973,7 +1973,7 @@ onBeforeUnmount(() => {
         />
 
         <div>
-          <p class="text-sm font-semibold text-app-text">Dashboard</p>
+          <p class="text-sm font-semibold text-app-text">仪表盘</p>
         </div>
       </div>
 
@@ -1982,7 +1982,7 @@ onBeforeUnmount(() => {
           v-model      = "globalSearch"
           :class       = "dashboardHeaderSearchClass"
           autocomplete = "off"
-          placeholder  = "Type / to search repositories, models and comments"
+              placeholder  = "输入 / 搜索仓库、模型和评论"
           type         = "text"
         />
       </div>
@@ -1994,7 +1994,7 @@ onBeforeUnmount(() => {
             type   = "button"
             @click = "toggleFileMenu"
           >
-            + New
+            新建
           </button>
 
           <div
@@ -2034,7 +2034,7 @@ onBeforeUnmount(() => {
             type   = "button"
             @click = "toggleSettingsMenu"
           >
-            Settings
+            设置
           </button>
 
           <div
@@ -2056,7 +2056,7 @@ onBeforeUnmount(() => {
           :class = "dashboardHeaderActionClass"
           type   = "button"
         >
-          {{ authUser || "Guest" }}
+          {{ authUser || "游客" }}
         </button>
       </nav>
 
@@ -2075,20 +2075,20 @@ onBeforeUnmount(() => {
       |--------------------------------------------------------------------------
       | 左侧仓库侧栏
       |--------------------------------------------------------------------------
-      | 参考 GitHub Dashboard 的 Top repositories 结构，展示个人模型仓库和快速筛选。
+      | 参考代码托管仪表盘的仓库列表结构，展示个人模型仓库和快速筛选。
       |--------------------------------------------------------------------------
       -->
       <aside :class="dashboardSidebarClass">
         <div class="border-b border-app-border px-4 py-6">
           <div class="flex items-center justify-between gap-3">
-            <p class="text-base font-semibold text-app-text">Top repositories</p>
+            <p class="text-base font-semibold text-app-text">置顶仓库</p>
 
             <button
               :class = "dashboardHeaderActionClass"
               type   = "button"
               @click = "openImportDialog"
             >
-              New
+              新建
             </button>
           </div>
 
@@ -2097,7 +2097,7 @@ onBeforeUnmount(() => {
             :class       = "dashboardSidebarSearchClass"
             autocomplete = "off"
             class        = "mt-4"
-            placeholder  = "Find a repository..."
+            placeholder  = "查找仓库..."
             type         = "text"
           />
         </div>
@@ -2135,16 +2135,16 @@ onBeforeUnmount(() => {
 
       <!--
       |--------------------------------------------------------------------------
-      | 中间 Home 内容区
+      | 中间首页内容区
       |--------------------------------------------------------------------------
-      | 参考 GitHub Home 的提问输入区、动作栏和 Feed，同时接入 MeshHub 预览能力。
+      | 参考代码托管首页的提问输入区、动作栏和动态区，同时接入 MeshHub 预览能力。
       |--------------------------------------------------------------------------
       -->
       <section :class="communityMainClass">
         <div class="mx-auto flex max-w-4xl flex-col gap-6">
           <div class="flex items-end justify-between gap-4">
             <div>
-              <h1 class="text-4xl font-semibold tracking-tight text-app-text">Home</h1>
+              <h1 class="text-4xl font-semibold tracking-tight text-app-text">首页</h1>
               <p class="mt-2 text-sm text-app-text-muted">
               </p>
             </div>
@@ -2172,7 +2172,7 @@ onBeforeUnmount(() => {
             <textarea
               v-model      = "homePrompt"
               class        = "min-h-28 w-full resize-none bg-transparent text-lg text-app-text outline-none placeholder:text-app-text-subtle"
-              placeholder  = "Ask anything about your models, repositories, preview tasks or format conversion"
+              placeholder  = "输入模型、仓库、预览任务或格式转换问题"
             ></textarea>
 
             <div class="mt-4 flex items-center justify-between gap-3 border-t border-app-border-soft pt-4">
@@ -2181,14 +2181,14 @@ onBeforeUnmount(() => {
                   :class = "dashboardHeaderActionClass"
                   type   = "button"
                 >
-                  Ask
+                  提问
                 </button>
 
                 <button
                   :class = "dashboardHeaderActionClass"
                   type   = "button"
                 >
-                  All repositories
+                  所有仓库
                 </button>
 
                 <button
@@ -2200,7 +2200,7 @@ onBeforeUnmount(() => {
               </div>
 
               <p class="text-sm text-app-text-subtle">
-                {{ authUser || "Guest" }} · {{ isServerReachable ? "Cloud online" : "Cloud offline" }}
+                {{ authUser || "游客" }} · {{ isServerReachable ? "云端在线" : "云端离线" }}
               </p>
             </div>
           </section>
@@ -2211,7 +2211,7 @@ onBeforeUnmount(() => {
               type   = "button"
               @click = "openImportDialog"
             >
-              Import model
+              导入模型
             </button>
 
             <button
@@ -2219,7 +2219,7 @@ onBeforeUnmount(() => {
               type   = "button"
               @click = "openCloudUploadDialog"
             >
-              Upload cloud
+              上传云端
             </button>
 
             <button
@@ -2227,7 +2227,7 @@ onBeforeUnmount(() => {
               type   = "button"
               @click = "openFormatConversion"
             >
-              Convert
+              转换格式
             </button>
 
             <button
@@ -2235,13 +2235,13 @@ onBeforeUnmount(() => {
               type   = "button"
               @click = "syncCloudModelsOnDemand"
             >
-              Sync cloud
+              同步云端
             </button>
           </div>
 
           <div class="flex items-center justify-between gap-4">
             <div>
-              <p class="text-xl font-semibold text-app-text">Feed</p>
+              <p class="text-xl font-semibold text-app-text">动态</p>
               <p class="mt-1 text-sm text-app-text-muted">
                 {{
                   communityView === "activity"
@@ -2255,7 +2255,7 @@ onBeforeUnmount(() => {
               :class = "dashboardHeaderActionClass"
               type   = "button"
             >
-              Filter
+              筛选
             </button>
           </div>
 
@@ -2267,7 +2267,7 @@ onBeforeUnmount(() => {
               <div class="flex items-center justify-between gap-4">
                 <div class="min-w-0">
                   <p class="truncate text-lg font-semibold text-app-text">
-                    {{ selectedFile?.name || "Current preview" }}
+                    {{ selectedFile?.name || "当前预览" }}
                   </p>
 
                   <p class="mt-2 text-sm text-app-text-muted">
@@ -2281,7 +2281,7 @@ onBeforeUnmount(() => {
                     type   = "button"
                     @click = "zoomInPreview"
                   >
-                    Zoom in
+                    放大
                   </button>
 
                   <button
@@ -2289,7 +2289,7 @@ onBeforeUnmount(() => {
                     type   = "button"
                     @click = "zoomOutPreview"
                   >
-                    Zoom out
+                    缩小
                   </button>
 
                   <button
@@ -2297,7 +2297,7 @@ onBeforeUnmount(() => {
                     type   = "button"
                     @click = "resetPreviewView"
                   >
-                    Reset
+                    重置
                   </button>
                 </div>
               </div>
@@ -2383,7 +2383,7 @@ onBeforeUnmount(() => {
             </section>
 
             <section :class="communityPanelClass">
-              <p class="text-base font-semibold text-app-text">Recent comments</p>
+              <p class="text-base font-semibold text-app-text">最新评论</p>
 
               <div
                 v-if  = "communityComments.length === 0"
@@ -2403,7 +2403,7 @@ onBeforeUnmount(() => {
                 >
                   <p class="text-sm font-medium text-app-text">
                     {{ comment.author }}
-                    <span class="font-normal text-app-text-subtle">commented on</span>
+                    <span class="font-normal text-app-text-subtle">评论了</span>
                     {{ comment.target }}
                   </p>
 
@@ -2472,13 +2472,13 @@ onBeforeUnmount(() => {
       |--------------------------------------------------------------------------
       | 右侧状态栏
       |--------------------------------------------------------------------------
-      | 参考 GitHub Dashboard 的 changelog 侧栏，展示最近更新和当前工作区状态。
+      | 参考代码托管仪表盘的更新侧栏，展示最近更新和当前工作区状态。
       |--------------------------------------------------------------------------
       -->
       <aside class="hidden h-full w-[320px] shrink-0 overflow-y-auto border-l border-app-border px-6 py-8 xl:block">
         <div class="space-y-4">
           <section :class="communityPanelClass">
-            <p class="text-base font-semibold text-app-text">Latest from MeshHub</p>
+            <p class="text-base font-semibold text-app-text">MeshHub 最新动态</p>
 
             <div class="mt-5 space-y-5">
               <article
@@ -2500,7 +2500,7 @@ onBeforeUnmount(() => {
           </section>
 
           <section :class="communityPanelClass">
-            <p class="text-base font-semibold text-app-text">Workspace</p>
+            <p class="text-base font-semibold text-app-text">工作区</p>
 
             <div class="mt-4 space-y-3 text-sm">
               <div class="rounded-md border border-app-border-soft bg-app-bg px-3 py-3">
@@ -2513,14 +2513,14 @@ onBeforeUnmount(() => {
               <div class="rounded-md border border-app-border-soft bg-app-bg px-3 py-3">
                 <p class="text-xs text-app-text-subtle">云端状态</p>
                 <p class="mt-1 text-app-text">
-                  {{ isServerReachable ? "Cloud online" : "Cloud offline" }}
+                  {{ isServerReachable ? "云端在线" : "云端离线" }}
                 </p>
               </div>
 
               <div class="rounded-md border border-app-border-soft bg-app-bg px-3 py-3">
                 <p class="text-xs text-app-text-subtle">当前账户</p>
                 <p class="mt-1 text-app-text">
-                  {{ authUser || "Guest" }}
+                  {{ authUser || "游客" }}
                 </p>
               </div>
 
