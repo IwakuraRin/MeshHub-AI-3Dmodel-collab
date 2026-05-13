@@ -156,58 +156,12 @@ const isClientUnlocked = computed(() => {
 |--------------------------------------------------------------------------
 | 社区首页展示数据
 |--------------------------------------------------------------------------
-| 公开模型库和动态流先使用前端展示数据，后续可替换为服务端社区接口。
+| 首页只展示真实导入或云端同步的数据，不再使用前端假项目占位。
 |--------------------------------------------------------------------------
 */
-const publicModelLibrary = [
-  {
-    id: "public-camera-rig",
-    name: "模块化相机云台",
-    owner: "robot-lab",
-    format: "STEP",
-    stars: 128,
-    comments: 18,
-    updatedAt: "今天 14:20",
-    summary: "适合机器人视觉、桌面机械臂和教学项目的开源三维结构。"
-  },
-  {
-    id: "public-gearbox",
-    name: "轻量化减速箱外壳",
-    owner: "mesh-maker",
-    format: "STL",
-    stars: 94,
-    comments: 12,
-    updatedAt: "昨天 22:06",
-    summary: "面向 FDM 打印优化，保留装配定位孔和加强筋结构。"
-  },
-  {
-    id: "public-drone-frame",
-    name: "四旋翼快拆机架",
-    owner: "open-aero",
-    format: "FBX",
-    stars: 211,
-    comments: 36,
-    updatedAt: "5 月 10 日",
-    summary: "公开模型库热门项目，可用于结构参考和二次建模。"
-  }
-];
+const publicModelLibrary = [];
 
-const communityComments = [
-  {
-    id: "comment-review-fit",
-    author: "Ming",
-    target: "智能车轮组件",
-    content: "装配间隙标注很清楚，建议把轴承座单独拆成一个版本。",
-    time: "12 分钟前"
-  },
-  {
-    id: "comment-print-test",
-    author: "Alex",
-    target: "模块化相机云台",
-    content: "我用 PETG 打印过，右侧支架可以再加一条加强筋。",
-    time: "38 分钟前"
-  }
-];
+const communityComments = [];
 
 const dashboardTimelineEntries = [
   {
@@ -254,14 +208,7 @@ const dashboardRepositories = computed(() => {
     });
   }
 
-  return publicModelLibrary.map((model) => {
-    return {
-      id: model.id,
-      title: `${model.owner}/${model.name}`,
-      meta: `${model.format} · ${model.stars} stars`,
-      selectable: false
-    };
-  });
+  return [];
 });
 
 const filteredRepositories = computed(() => {
@@ -279,17 +226,7 @@ const filteredRepositories = computed(() => {
 
 const recentUploads = computed(() => {
   if (importedFiles.value.length === 0) {
-    return publicModelLibrary.slice(0, 2).map((model) => {
-      return {
-        id: `seed-${model.id}`,
-        name: model.name,
-        owner: model.owner,
-        format: model.format,
-        time: model.updatedAt,
-        summary: model.summary,
-        source: "public"
-      };
-    });
+    return [];
   }
 
   return importedFiles.value.slice(0, 5).map((file) => {
@@ -329,6 +266,18 @@ const dashboardFeedEntries = computed(() => {
       action: upload.source === "public" ? "Explore" : "Open"
     };
   });
+});
+
+const repositoryEmptyMessage = computed(() => {
+  return repositoryQuery.value.trim()
+    ? "没有匹配的模型仓库。"
+    : "暂无模型仓库。导入或同步模型后会显示在这里。";
+});
+
+const feedEmptyMessage = computed(() => {
+  return communityView.value === "library"
+    ? "公开模型库还没有真实数据。后续接入社区接口后会显示公开模型。"
+    : "Feed 里还没有真实模型动态。导入或同步模型后会显示更新。";
 });
 
 /*
@@ -2158,7 +2107,7 @@ onBeforeUnmount(() => {
             v-if  = "filteredRepositories.length === 0"
             class = "rounded-md border border-dashed border-app-border px-3 py-4 text-sm leading-6 text-app-text-subtle"
           >
-            没有匹配的模型仓库。
+            {{ repositoryEmptyMessage }}
           </div>
 
           <div
@@ -2197,7 +2146,6 @@ onBeforeUnmount(() => {
             <div>
               <h1 class="text-4xl font-semibold tracking-tight text-app-text">Home</h1>
               <p class="mt-2 text-sm text-app-text-muted">
-                用 GitHub Dashboard 的形式管理你的开源模型仓库、动态和预览。
               </p>
             </div>
 
@@ -2391,7 +2339,17 @@ onBeforeUnmount(() => {
             </section>
 
             <section :class="communityPanelClass">
-              <div class="space-y-0 overflow-hidden rounded-md border border-app-border-soft">
+              <div
+                v-if  = "dashboardFeedEntries.length === 0"
+                class = "rounded-md border border-dashed border-app-border px-4 py-6 text-sm leading-6 text-app-text-subtle"
+              >
+                {{ feedEmptyMessage }}
+              </div>
+
+              <div
+                v-else
+                class = "space-y-0 overflow-hidden rounded-md border border-app-border-soft"
+              >
                 <article
                   v-for = "entry in dashboardFeedEntries"
                   :key  = "entry.id"
@@ -2427,7 +2385,17 @@ onBeforeUnmount(() => {
             <section :class="communityPanelClass">
               <p class="text-base font-semibold text-app-text">Recent comments</p>
 
-              <div class="mt-4 space-y-3">
+              <div
+                v-if  = "communityComments.length === 0"
+                class = "mt-4 rounded-md border border-dashed border-app-border px-4 py-6 text-sm leading-6 text-app-text-subtle"
+              >
+                暂无真实评论。
+              </div>
+
+              <div
+                v-else
+                class = "mt-4 space-y-3"
+              >
                 <article
                   v-for = "comment in communityComments"
                   :key  = "comment.id"
@@ -2455,7 +2423,17 @@ onBeforeUnmount(() => {
             v-show  = "communityView === 'library'"
             :class  = "communityPanelClass"
           >
-            <div class="space-y-0 overflow-hidden rounded-md border border-app-border-soft">
+            <div
+              v-if  = "dashboardFeedEntries.length === 0"
+              class = "rounded-md border border-dashed border-app-border px-4 py-6 text-sm leading-6 text-app-text-subtle"
+            >
+              {{ feedEmptyMessage }}
+            </div>
+
+            <div
+              v-else
+              class = "space-y-0 overflow-hidden rounded-md border border-app-border-soft"
+            >
               <article
                 v-for = "entry in dashboardFeedEntries"
                 :key  = "entry.id"
